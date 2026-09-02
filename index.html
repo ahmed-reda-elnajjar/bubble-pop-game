@@ -1,0 +1,571 @@
+<title>Bubble Pop</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@500;600;700;800&display=swap');
+
+  :root{
+    --sky-top:#7fd9ff;
+    --sky-bottom:#ffe07d;
+    --card:#fffdf7;
+    --ink:#3a2b6b;
+    --ink-soft:#7a6fa3;
+    --pink:#ff6b8b;
+    --orange:#ffb84d;
+    --green:#4ecb7a;
+    --blue:#4d96ff;
+    --purple:#b26bff;
+    --yellow:#ffd93d;
+    --font:'Baloo Bhaijaan 2', 'Segoe UI', Tahoma, sans-serif;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    min-height:100%;
+    background:linear-gradient(180deg, var(--sky-top) 0%, #bfeaff 40%, var(--sky-bottom) 100%);
+    font-family:var(--font);
+    direction:rtl;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    color:var(--ink);
+  }
+
+  .game-card{
+    width:100%;
+    max-width:680px;
+    background:var(--card);
+    border-radius:28px;
+    border:5px solid #fff;
+    box-shadow:0 24px 0 -8px rgba(58,43,107,0.08), 0 30px 60px -20px rgba(58,43,107,0.35);
+    padding:16px;
+  }
+
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:4px 8px 14px;
+  }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand svg{ width:42px; height:42px; flex:none; }
+  .brand .title{ font-weight:800; font-size:22px; color:var(--ink); }
+
+  .badges{ display:flex; gap:8px; }
+  .badge{
+    display:flex; align-items:center; gap:6px;
+    font-weight:700; font-size:16px; border-radius:999px; padding:7px 14px;
+    color:#fff; box-shadow:0 4px 0 rgba(0,0,0,0.12);
+  }
+  .badge.score{ background:linear-gradient(145deg, var(--yellow), var(--orange)); }
+  .badge.timer{ background:linear-gradient(145deg, var(--blue), var(--purple)); }
+
+  .gear{
+    width:34px; height:34px; border-radius:50%; border:none; cursor:pointer;
+    background:#f1edff; font-size:16px; line-height:1;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 3px 0 rgba(58,43,107,0.12);
+  }
+  .gear:active{ transform:translateY(2px); box-shadow:none; }
+
+  .sens-pop{
+    position:relative; margin:-6px 8px 12px; padding:12px 16px;
+    background:#f1edff; border-radius:16px; z-index:6;
+  }
+  .sens-pop.hidden{ display:none; }
+  .sens-pop label{ font-weight:700; font-size:13.5px; color:var(--ink); display:block; margin-bottom:6px; }
+  .sens-pop input[type=range]{ width:100%; accent-color:var(--pink); }
+  .sens-row{ display:flex; justify-content:space-between; font-size:11.5px; color:var(--ink-soft); font-weight:600; margin-top:2px; }
+
+  .stage{
+    position:relative; width:100%; aspect-ratio:4/3;
+    border-radius:20px; overflow:hidden; background:linear-gradient(180deg,#8fe0ff,#fff2b8);
+    border:3px solid #fff;
+  }
+  video{ position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
+  canvas#game{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+
+  .panel{
+    position:absolute; inset:0; z-index:5; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center; gap:12px; padding:24px;
+    background:rgba(255,253,247,0.94);
+  }
+  .panel.hidden{ display:none; }
+  .panel svg{ width:96px; height:96px; }
+  .panel h2{ margin:0; font-size:24px; font-weight:800; color:var(--ink); }
+  .panel p{ margin:0; font-size:15px; color:var(--ink-soft); max-width:380px; line-height:1.7; font-weight:500; }
+
+  .btn-fun{
+    font-family:var(--font); font-weight:800; font-size:18px; color:#fff; border:none; cursor:pointer;
+    padding:14px 34px; border-radius:999px;
+    background:linear-gradient(145deg, var(--green), #2fae63);
+    box-shadow:0 6px 0 #279254;
+    transition:transform .1s, box-shadow .1s;
+  }
+  .btn-fun:active{ transform:translateY(4px); box-shadow:0 2px 0 #279254; }
+
+  .countdown-num{
+    font-size:64px; font-weight:800; color:var(--pink);
+    text-shadow:0 4px 0 rgba(0,0,0,0.08);
+  }
+  .target-ring{
+    position:absolute; left:50%; top:58%; transform:translate(-50%,-50%);
+    width:120px; height:120px; border-radius:50%;
+    border:6px dashed var(--pink); opacity:.85;
+    animation:ringPulse 1s ease-in-out infinite;
+  }
+  @keyframes ringPulse{ 0%,100%{ transform:translate(-50%,-50%) scale(1); } 50%{ transform:translate(-50%,-50%) scale(1.08); } }
+
+  .score-big{ font-size:40px; font-weight:800; color:var(--orange); }
+
+  @media (max-width:520px){
+    .game-card{ border-radius:20px; padding:12px; }
+    .brand .title{ font-size:18px; }
+  }
+</style>
+
+<div class="game-card">
+  <div class="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="#ffd93d"/><circle cx="23" cy="28" r="4.5" fill="#3a2b6b"/><circle cx="41" cy="28" r="4.5" fill="#3a2b6b"/><path d="M20 38c4 6 20 6 24 0" stroke="#3a2b6b" stroke-width="4" fill="none" stroke-linecap="round"/></svg>
+      <span class="title">فرقعة الفقاعات</span>
+    </div>
+    <div class="badges">
+      <div class="badge score">⭐ <span id="scoreVal">0</span></div>
+      <div class="badge timer">⏱ <span id="timeVal">40</span></div>
+      <button class="gear" id="gearBtn" aria-label="حساسية الحركة" title="حساسية الحركة">⚙️</button>
+    </div>
+  </div>
+
+  <div class="sens-pop hidden" id="sensPop">
+    <label for="sensRange">حساسية حركة الإيد</label>
+    <input type="range" id="sensRange" min="1.2" max="3.2" step="0.1" value="2.1">
+    <div class="sens-row"><span>أهدى</span><span>أسرع</span></div>
+  </div>
+
+  <div class="stage" id="stage">
+    <video id="video" playsinline muted></video>
+    <canvas id="game"></canvas>
+
+    <div class="panel" id="startPanel">
+      <svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="#ff6b8b"/><circle cx="23" cy="28" r="4.5" fill="#fff"/><circle cx="41" cy="28" r="4.5" fill="#fff"/><path d="M20 38c4 6 20 6 24 0" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/></svg>
+      <h2>فرقّع الفقاعات بإيدك! ✋</h2>
+      <p>حرّك إيدك قدام الكاميرا عشان تفرقع الفقاعات الملونة اللي بتطلع. كل فقاعة = نقطة!</p>
+      <button class="btn-fun" id="startBtn">ابدأ اللعب 🎈</button>
+    </div>
+
+    <div class="panel hidden" id="calibPanel">
+      <h2>حُط إيدك جوه الدائرة</h2>
+      <div class="countdown-num" id="countdownNum">3</div>
+      <div class="target-ring"></div>
+    </div>
+
+    <div class="panel hidden" id="endPanel">
+      <svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="#4ecb7a"/><path d="M20 30l7 7 17-17" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <h2>أحسنت! 🎉</h2>
+      <div class="score-big"><span id="finalScore">0</span> فقاعة</div>
+      <button class="btn-fun" id="againBtn">العب تاني 🔁</button>
+    </div>
+
+    <div class="panel hidden" id="errorPanel">
+      <svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="#ffb84d"/><circle cx="23" cy="28" r="4.5" fill="#3a2b6b"/><circle cx="41" cy="28" r="4.5" fill="#3a2b6b"/><path d="M22 42c4-5 16-5 20 0" stroke="#3a2b6b" stroke-width="4" fill="none" stroke-linecap="round"/></svg>
+      <h2>معلش، مش لاقيين الكاميرا 🙈</h2>
+      <p id="errorText">جرّب تفتح الملف مباشرة في متصفح Chrome أو Edge بدل ما تشوفه هنا.</p>
+      <button class="btn-fun" id="retryBtn">جرّب تاني</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const video = document.getElementById('video');
+  const gameCanvas = document.getElementById('game');
+  const gctx = gameCanvas.getContext('2d');
+  const startPanel = document.getElementById('startPanel');
+  const calibPanel = document.getElementById('calibPanel');
+  const endPanel = document.getElementById('endPanel');
+  const errorPanel = document.getElementById('errorPanel');
+  const startBtn = document.getElementById('startBtn');
+  const againBtn = document.getElementById('againBtn');
+  const retryBtn = document.getElementById('retryBtn');
+  const countdownNum = document.getElementById('countdownNum');
+  const scoreVal = document.getElementById('scoreVal');
+  const timeVal = document.getElementById('timeVal');
+  const finalScore = document.getElementById('finalScore');
+  const errorText = document.getElementById('errorText');
+  const gearBtn = document.getElementById('gearBtn');
+  const sensPop = document.getElementById('sensPop');
+  const sensRange = document.getElementById('sensRange');
+
+  const DISPLAY_W = 640, DISPLAY_H = 480;
+  const AN_W = 160, AN_H = 120;
+  gameCanvas.width = DISPLAY_W; gameCanvas.height = DISPLAY_H;
+
+  const ac = document.createElement('canvas');
+  ac.width = AN_W; ac.height = AN_H;
+  const actx = ac.getContext('2d', { willReadFrequently:true });
+
+  const BUBBLE_COLORS = ['#ff6b8b','#ffb84d','#4ecb7a','#4d96ff','#b26bff','#ffd93d'];
+
+  let state = 'idle'; // idle | calibrating | playing | ended
+  let centerCb = 112, centerCr = 152, tol = 24;
+  let handPos = { x: DISPLAY_W/2, y: DISPLAY_H/2 };
+  let hasHand = false;
+  let missStreak = 0;
+  let sensitivityGain = parseFloat(sensRange.value); // amplifies hand movement so a small physical swing reaches the full play area
+
+  let bubbles = [];
+  let particles = [];
+  let clouds = [];
+  let score = 0;
+  let timeLeft = 40;
+  let lastSpawn = 0;
+  let lastProcess = 0;
+  let timerInterval = null;
+  let audioCtx = null;
+
+  for (let i=0;i<5;i++){
+    clouds.push({ x: Math.random()*DISPLAY_W, y: 30+Math.random()*120, r: 30+Math.random()*30, s: 6+Math.random()*10 });
+  }
+
+  function beep(freq, dur){
+    try{
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(); o.stop(audioCtx.currentTime + dur);
+    }catch(e){}
+  }
+
+  function coverCrop(srcW, srcH, targetW, targetH){
+    const srcAspect = srcW/srcH, tgtAspect = targetW/targetH;
+    let sw, sh, sx, sy;
+    if (srcAspect > tgtAspect){ sh=srcH; sw=srcH*tgtAspect; sy=0; sx=(srcW-sw)/2; }
+    else { sw=srcW; sh=srcW/tgtAspect; sx=0; sy=(srcH-sh)/2; }
+    return { sx, sy, sw, sh };
+  }
+
+  function drawMirroredAnalysisFrame(){
+    if (video.readyState < 2) return false;
+    const crop = coverCrop(video.videoWidth, video.videoHeight, AN_W, AN_H);
+    actx.save();
+    actx.translate(AN_W, 0); actx.scale(-1,1);
+    actx.drawImage(video, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, AN_W, AN_H);
+    actx.restore();
+    return true;
+  }
+
+  function rgbToYCbCr(r,g,b){
+    const Y = 0.299*r+0.587*g+0.114*b;
+    const Cb = 128 - 0.168736*r - 0.331264*g + 0.5*b;
+    const Cr = 128 + 0.5*r - 0.418688*g - 0.081312*b;
+    return [Y,Cb,Cr];
+  }
+
+  function sampleCircleColor(){
+    // target ring sits at 50% x, 58% y of the stage, radius ~120px in a 640-wide display -> analysis coords
+    const cx = Math.round(AN_W*0.5), cy = Math.round(AN_H*0.58), rad = Math.round(AN_W*0.094);
+    const data = actx.getImageData(0,0,AN_W,AN_H).data;
+    let sr=0,sg=0,sb=0,n=0;
+    for (let y=cy-rad;y<=cy+rad;y++){
+      for (let x=cx-rad;x<=cx+rad;x++){
+        if (x<0||y<0||x>=AN_W||y>=AN_H) continue;
+        if ((x-cx)*(x-cx)+(y-cy)*(y-cy) > rad*rad) continue;
+        const p=(y*AN_W+x)*4;
+        sr+=data[p]; sg+=data[p+1]; sb+=data[p+2]; n++;
+      }
+    }
+    if (!n) return null;
+    return rgbToYCbCr(sr/n, sg/n, sb/n);
+  }
+
+  function findHand(){
+    const data = actx.getImageData(0,0,AN_W,AN_H).data;
+    const mask = new Uint8Array(AN_W*AN_H);
+    for (let i=0,p=0;i<AN_W*AN_H;i++,p+=4){
+      const [Y,Cb,Cr] = rgbToYCbCr(data[p],data[p+1],data[p+2]);
+      if (Y>24 && Math.abs(Cb-centerCb)<tol && Math.abs(Cr-centerCr)<tol*1.15) mask[i]=1;
+    }
+    const visited = new Uint8Array(AN_W*AN_H);
+    const ignoreRows = Math.floor(AN_H*0.12);
+    const stack = new Int32Array(AN_W*AN_H);
+    const minSize = AN_W*AN_H*0.02;
+    let candidates = [];
+    for (let y=ignoreRows;y<AN_H;y++){
+      for (let x=0;x<AN_W;x++){
+        const start=y*AN_W+x;
+        if (!mask[start]||visited[start]) continue;
+        let sp=0; stack[sp++]=start; visited[start]=1;
+        let size=0,sx=0,sy=0;
+        while(sp>0){
+          const cur=stack[--sp]; size++;
+          const cx=cur%AN_W, cy=(cur/AN_W)|0;
+          sx+=cx; sy+=cy;
+          if (cx>0){const n=cur-1; if(mask[n]&&!visited[n]){visited[n]=1;stack[sp++]=n;}}
+          if (cx<AN_W-1){const n=cur+1; if(mask[n]&&!visited[n]){visited[n]=1;stack[sp++]=n;}}
+          if (cy>ignoreRows){const n=cur-AN_W; if(mask[n]&&!visited[n]){visited[n]=1;stack[sp++]=n;}}
+          if (cy<AN_H-1){const n=cur+AN_W; if(mask[n]&&!visited[n]){visited[n]=1;stack[sp++]=n;}}
+        }
+        if (size>=minSize) candidates.push({ size, cx:sx/size, cy:sy/size });
+      }
+    }
+    if (!candidates.length) return null;
+    let best;
+    if (hasHand){
+      best = candidates.reduce((a,b) => {
+        const da = (a.cx-handPos.ax)**2 + (a.cy-handPos.ay)**2;
+        const db = (b.cx-handPos.ax)**2 + (b.cy-handPos.ay)**2;
+        return db < da ? b : a;
+      });
+    } else {
+      best = candidates.reduce((a,b) => b.size > a.size ? b : a);
+    }
+    return best;
+  }
+
+  function applyGain(rawX, rawY){
+    // amplify how far the cursor moves from center relative to the hand's real movement,
+    // so a comfortable hand swing (not full arm extension) still reaches the edges
+    const cx = DISPLAY_W/2, cy = DISPLAY_H/2;
+    let gx = cx + (rawX-cx) * sensitivityGain;
+    let gy = cy + (rawY-cy) * (sensitivityGain*0.65); // less vertical amplification: bubbles only need moderate reach up/down
+    gx = Math.max(16, Math.min(DISPLAY_W-16, gx));
+    gy = Math.max(16, Math.min(DISPLAY_H-16, gy));
+    return [gx, gy];
+  }
+
+  function updateTracking(){
+    if (!drawMirroredAnalysisFrame()) return;
+    const hand = findHand();
+    if (hand){
+      missStreak = 0;
+      const sx = DISPLAY_W/AN_W, sy = DISPLAY_H/AN_H;
+      const rawX = hand.cx*sx, rawY = hand.cy*sy;
+      const [tx, ty] = applyGain(rawX, rawY);
+      if (!hasHand){ handPos.x = tx; handPos.y = ty; }
+      else { handPos.x += (tx-handPos.x)*0.35; handPos.y += (ty-handPos.y)*0.35; }
+      handPos.ax = hand.cx; handPos.ay = hand.cy;
+      hasHand = true;
+    } else {
+      missStreak++;
+      if (missStreak > 20) hasHand = false;
+    }
+  }
+
+  function spawnBubble(){
+    bubbles.push({
+      x: 30+Math.random()*(DISPLAY_W-60),
+      y: DISPLAY_H+30,
+      r: 24+Math.random()*18,
+      color: BUBBLE_COLORS[Math.floor(Math.random()*BUBBLE_COLORS.length)],
+      speed: 45+Math.random()*35,
+      wobble: Math.random()*Math.PI*2
+    });
+  }
+
+  function burst(x,y,color){
+    for (let i=0;i<10;i++){
+      const ang = Math.random()*Math.PI*2, spd = 60+Math.random()*80;
+      particles.push({ x, y, vx:Math.cos(ang)*spd, vy:Math.sin(ang)*spd, life:1, color });
+    }
+  }
+
+  function drawScene(dt){
+    // sky
+    const grad = gctx.createLinearGradient(0,0,0,DISPLAY_H);
+    grad.addColorStop(0,'#8fe0ff'); grad.addColorStop(1,'#fff2b8');
+    gctx.fillStyle = grad; gctx.fillRect(0,0,DISPLAY_W,DISPLAY_H);
+
+    // clouds
+    gctx.fillStyle = 'rgba(255,255,255,0.85)';
+    for (const c of clouds){
+      c.x -= c.s*dt; if (c.x < -60) c.x = DISPLAY_W+60;
+      gctx.beginPath();
+      gctx.arc(c.x,c.y,c.r,0,Math.PI*2);
+      gctx.arc(c.x+c.r*0.7,c.y+6,c.r*0.7,0,Math.PI*2);
+      gctx.arc(c.x-c.r*0.7,c.y+8,c.r*0.6,0,Math.PI*2);
+      gctx.fill();
+    }
+
+    // bubbles
+    for (let i=bubbles.length-1;i>=0;i--){
+      const b = bubbles[i];
+      b.wobble += dt*2;
+      b.y -= b.speed*dt;
+      b.x += Math.sin(b.wobble)*0.6;
+      if (b.y < -b.r-20){ bubbles.splice(i,1); continue; }
+
+      if (hasHand){
+        const dx = handPos.x-b.x, dy = handPos.y-b.y;
+        if (Math.sqrt(dx*dx+dy*dy) < b.r+26){
+          burst(b.x,b.y,b.color);
+          bubbles.splice(i,1);
+          score++;
+          scoreVal.textContent = String(score);
+          beep(520+Math.random()*180, 0.12);
+          continue;
+        }
+      }
+
+      gctx.beginPath();
+      gctx.arc(b.x,b.y,b.r,0,Math.PI*2);
+      gctx.fillStyle = b.color+'cc';
+      gctx.fill();
+      gctx.lineWidth = 3; gctx.strokeStyle = '#ffffffcc'; gctx.stroke();
+      gctx.beginPath();
+      gctx.arc(b.x-b.r*0.35,b.y-b.r*0.35,b.r*0.28,0,Math.PI*2);
+      gctx.fillStyle = 'rgba(255,255,255,0.75)';
+      gctx.fill();
+    }
+
+    // particles
+    for (let i=particles.length-1;i>=0;i--){
+      const p = particles[i];
+      p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 140*dt; p.life -= dt*1.6;
+      if (p.life <= 0){ particles.splice(i,1); continue; }
+      gctx.globalAlpha = Math.max(p.life,0);
+      gctx.beginPath();
+      gctx.arc(p.x,p.y,5,0,Math.PI*2);
+      gctx.fillStyle = p.color;
+      gctx.fill();
+      gctx.globalAlpha = 1;
+    }
+
+    // hand cursor
+    if (hasHand){
+      gctx.beginPath();
+      gctx.arc(handPos.x,handPos.y,30,0,Math.PI*2);
+      gctx.fillStyle = 'rgba(255,255,255,0.55)';
+      gctx.fill();
+      gctx.beginPath();
+      gctx.arc(handPos.x,handPos.y,22,0,Math.PI*2);
+      gctx.fillStyle = '#ff6b8b';
+      gctx.fill();
+      gctx.font = '24px sans-serif';
+      gctx.textAlign = 'center'; gctx.textBaseline = 'middle';
+      gctx.fillText('✋', handPos.x, handPos.y+2);
+    }
+  }
+
+  let lastTs = 0;
+  function loop(ts){
+    if (state !== 'playing'){ return; }
+    requestAnimationFrame(loop);
+    const dt = Math.min((ts-lastTs)/1000, 0.05) || 0.016;
+    lastTs = ts;
+
+    if (ts - lastProcess > 66){ lastProcess = ts; updateTracking(); }
+    if (ts - lastSpawn > 850){ lastSpawn = ts; spawnBubble(); }
+
+    drawScene(dt);
+  }
+
+  function startTimer(){
+    timeLeft = 40; timeVal.textContent = String(timeLeft);
+    clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      timeVal.textContent = String(Math.max(timeLeft,0));
+      if (timeLeft <= 0){
+        clearInterval(timerInterval);
+        endGame();
+      }
+    }, 1000);
+  }
+
+  function endGame(){
+    state = 'ended';
+    finalScore.textContent = String(score);
+    endPanel.classList.remove('hidden');
+    beep(660,0.15); setTimeout(()=>beep(880,0.2),140);
+  }
+
+  function beginCalibration(){
+    state = 'calibrating';
+    startPanel.classList.add('hidden');
+    calibPanel.classList.remove('hidden');
+    let count = 3;
+    countdownNum.textContent = String(count);
+    const samples = [];
+    const iv = setInterval(() => {
+      if (drawMirroredAnalysisFrame()){
+        const s = sampleCircleColor();
+        if (s) samples.push(s);
+      }
+    }, 120);
+    const step = setInterval(() => {
+      count--;
+      if (count > 0){ countdownNum.textContent = String(count); }
+      else {
+        clearInterval(step); clearInterval(iv);
+        if (samples.length){
+          let Cb=0,Cr=0;
+          for (const s of samples){ Cb+=s[1]; Cr+=s[2]; }
+          centerCb = Cb/samples.length; centerCr = Cr/samples.length; tol = 22;
+        }
+        calibPanel.classList.add('hidden');
+        score = 0; scoreVal.textContent = '0';
+        bubbles = []; particles = []; hasHand = false;
+        state = 'playing';
+        startTimer();
+        lastSpawn = performance.now(); lastProcess = 0; lastTs = performance.now();
+        requestAnimationFrame(loop);
+      }
+    }, 1000);
+  }
+
+  async function requestCameraAndStart(){
+    errorPanel.classList.add('hidden');
+    try{
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+        const e = new Error('blocked'); e.name = 'PolicyBlockedError'; throw e;
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'user', width:{ideal:640}, height:{ideal:480} }, audio:false });
+      video.srcObject = stream;
+      await video.play();
+      startPanel.classList.add('hidden');
+      beginCalibration();
+    }catch(err){
+      const name = err && err.name;
+      console.error('[Bubble Pop] camera failed:', name, err && err.message, err);
+      let msg;
+      if (name === 'PolicyBlockedError'){
+        msg = 'المعاينة هنا مش بتسمح بالكاميرا. افتح ملف اللعبة مباشرة في تبويب Chrome أو Edge بدل المعاينة جوه Claude.';
+      } else if (name === 'NotAllowedError' || name === 'SecurityError'){
+        msg = 'لازم تسمح بالكاميرا من المتصفح الأول. دوس على أيقونة الكاميرا في شريط العنوان واختار "سماح".';
+      } else if (name === 'NotFoundError'){
+        msg = 'مفيش كاميرا متوصلة بالجهاز ده.';
+      } else if (name === 'NotReadableError'){
+        msg = 'في برنامج تاني مستخدم الكاميرا دلوقتي (زي Zoom). قفله وجرّب تاني.';
+      } else {
+        msg = 'حصلت مشكلة في تشغيل الكاميرا. جرّب تفتح الملف في متصفح تاني.';
+      }
+      errorText.textContent = msg;
+      startPanel.classList.add('hidden');
+      errorPanel.classList.remove('hidden');
+    }
+  }
+
+  startBtn.addEventListener('click', requestCameraAndStart);
+  retryBtn.addEventListener('click', () => { errorPanel.classList.add('hidden'); startPanel.classList.remove('hidden'); });
+  againBtn.addEventListener('click', () => {
+    endPanel.classList.add('hidden');
+    startPanel.classList.remove('hidden');
+  });
+
+  gearBtn.addEventListener('click', () => { sensPop.classList.toggle('hidden'); });
+  sensRange.addEventListener('input', () => { sensitivityGain = parseFloat(sensRange.value); });
+
+  // idle background animation (clouds drifting) even before game starts
+  function idleLoop(ts){
+    if (state === 'idle'){
+      drawScene(0.016);
+      requestAnimationFrame(idleLoop);
+    }
+  }
+  requestAnimationFrame(idleLoop);
+})();
+</script>
